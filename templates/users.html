@@ -1,314 +1,302 @@
-<!DOCTYPE html>
-<html lang="fa" dir="rtl">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>مدیریت کاربران</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
-        body {
-            font-family: 'Inter', sans-serif;
-        }
-        table {
-            border-collapse: separate;
-            border-spacing: 0 7px; /* Space between rows */
-        }
-        .edit-form-row {
-            background-color: #e2e8f0;
-        }
-        /* Style for the log table row */
-        .log-row {
-            background-color: #e2e8f0;
-        }
-    </style>
-</head>
-<body class="bg-gray-100 p-4 sm:p-8 flex items-center justify-center min-h-screen">
-    <div class="container mx-auto max-w-4xl bg-white p-6 sm:p-10 rounded-xl shadow-2xl border border-gray-200">
-        <header class="text-center mb-6">
-            <h1 class="text-2xl sm:text-3xl font-bold text-gray-800 mb-1">مدیریت کاربران</h1>
-            <p class="text-gray-500 text-sm">افزودن، ویرایش و حذف کاربران سیستم.</p>
-        </header>
+{% extends "layout.html" %}
 
-        <nav class="flex flex-col sm:flex-row justify-center space-x-0 sm:space-x-4 space-x-reverse mb-6 flex-wrap">
-            <a href="/" class="bg-gray-200 text-gray-800 text-sm font-semibold py-2 px-3 rounded-lg shadow-md hover:bg-gray-300 transition duration-300 my-1 sm:my-0">ثبت تردد</a>
-            <a href="/management" class="bg-gray-200 text-gray-800 text-sm font-semibold py-2 px-3 rounded-lg shadow-md hover:bg-gray-300 transition duration-300 my-1 sm:my-0">مدیریت کارکنان</a>
-            <a href="/reports" class="bg-gray-200 text-gray-800 text-sm font-semibold py-2 px-3 rounded-lg shadow-md hover:bg-gray-300 transition duration-300 my-1 sm:my-0">گزارشات</a>
-            <a href="/users" class="bg-indigo-600 text-white text-sm font-semibold py-2 px-3 rounded-lg shadow-md hover:bg-indigo-700 transition duration-300 my-1 sm:my-0">کاربران</a>
-            <a href="/logout" class="bg-red-500 text-white text-sm font-semibold py-2 px-3 rounded-lg shadow-md hover:bg-red-600 transition duration-300 my-1 sm:my-0">خروج</a>
-        </nav>
-        <!-- Current User Display -->
-        {% if session.get('user') %}
-        <p class="text-center text-sm font-medium text-gray-600 mb-6">کاربر جاری: <span class="font-bold text-indigo-600">{{ session['user']['username'] }}</span></p>
-        {% endif %}
+{% block title %}مدیریت کاربران{% endblock %}
 
-        <section>
-            <div class="mb-3">
-                <h2 class="text-xl font-bold text-gray-800">افزودن کاربر جدید</h2>
+{% block head_extra %}
+<!-- jQuery CDN -->
+<script src="/static/jquery.min.js"></script>
+{% endblock %}
+
+{% block content %}
+<header class="text-center mb-6">
+    <h1 class="text-2xl sm:text-3xl font-bold text-gray-800 mb-1">مدیریت کاربران</h1>
+    <p class="text-gray-500 text-sm">افزودن، ویرایش و حذف کاربران سیستم.</p>
+</header>
+
+<section>
+    <div class="mb-3">
+        <h2 class="text-xl font-bold text-gray-800">افزودن کاربر جدید</h2>
+    </div>
+
+    <div class="bg-gray-50 p-4 rounded-lg shadow-inner mb-6">
+        <form action="/add_user" method="post" class="space-y-3">
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div>
+                    <label for="newUsername" class="block text-sm font-medium text-gray-700 mb-1">نام کاربری:</label>
+                    <input type="text" id="newUsername" name="username" placeholder="نام کاربری" required
+                           class="w-full p-2 rounded-md border border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition duration-300 text-sm">
+                </div>
+                <div>
+                    <label for="newName" class="block text-sm font-medium text-gray-700 mb-1">نام:</label>
+                    <input type="text" id="newName" name="name" placeholder="نام" required
+                           class="w-full p-2 rounded-md border border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition duration-300 text-sm">
+                </div>
+                <div>
+                    <label for="newPassword" class="block text-sm font-medium text-gray-700 mb-1">رمز عبور:</label>
+                    <input type="password" id="newPassword" name="password" placeholder="رمز عبور" required
+                           class="w-full p-2 rounded-md border border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition duration-300 text-sm">
+                </div>
+                <div>
+                    <label for="newRole" class="block text-sm font-medium text-gray-700 mb-1">سطح دسترسی:</label>
+                    <select id="newRole" name="role" required class="w-full p-2 rounded-md border border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition duration-300 text-sm">
+                        <option value="user">کاربر عادی</option>
+                        <option value="admin">مدیر</option>
+                    </select>
+                </div>
             </div>
+            <button type="submit" class="w-full bg-blue-600 text-white font-semibold py-2 rounded-lg shadow-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition duration-300 text-sm">
+                افزودن کاربر
+            </button>
+        </form>
+    </div>
 
-            <div class="bg-gray-50 p-4 rounded-lg shadow-inner mb-6">
-                <form action="/add_user" method="post" class="space-y-3">
+    <div class="bg-white rounded-xl overflow-hidden shadow-2xl border border-gray-200">
+        <div class="overflow-x-auto">
+            <table class="min-w-full">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th class="px-6 py-3 text-right text-sm font-medium text-gray-500 uppercase tracking-wider">نام</th>
+                        <th class="px-6 py-3 text-right text-sm font-medium text-gray-500 uppercase tracking-wider">نام کاربری</th>
+                        <th class="px-6 py-3 text-right text-sm font-medium text-gray-500 uppercase tracking-wider">سطح دسترسی</th>
+                        <th class="px-6 py-3 text-right text-sm font-medium text-gray-500 uppercase tracking-wider">دسترسی‌ها</th>
+                        <th class="px-6 py-3 text-right text-sm font-medium text-gray-500 uppercase tracking-wider">عملیات</th>
+                    </tr>
+                </thead>
+                <tbody id="usersTableBody" class="bg-white divide-y divide-gray-200">
+                    {% for user in users %}
+                    <tr class="transition duration-200 hover:bg-gray-100" data-username="{{ user.username }}">
+                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{{ user.name }}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ user.username }}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{{ 'مدیر' if user.role == 'admin' else 'کاربر عادی' }}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                            <button onclick="showPermissionsForm(this)" class="text-purple-600 hover:text-purple-900 transition duration-300 mr-2" {% if user.username == 'admin' %}disabled{% endif %}>
+                                دسترسی‌ها
+                            </button>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium flex space-x-2 space-x-reverse">
+                            <button onclick="showUserLog(this)" class="text-blue-600 hover:text-blue-900 transition duration-300">
+                                مشاهده گزارش
+                            </button>
+                            <button onclick="showEditForm(this)" class="text-indigo-600 hover:text-indigo-900 transition duration-300" {% if user.username == 'admin' %}disabled{% endif %}>
+                                ویرایش
+                            </button>
+                            <form action="/delete_user" method="post" class="inline-block" onsubmit="return confirm('آیا مطمئن هستید که می‌خواهید کاربر {{ user.name }} را حذف کنید؟');">
+                                <input type="hidden" name="username" value="{{ user.username }}">
+                                <button type="submit" class="text-red-600 hover:text-red-900 transition duration-300 mr-2" {% if user.username == 'admin' %}disabled{% endif %}>
+                                    حذف
+                                </button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</section>
+{% endblock %}
+
+{% block scripts_extra %}
+<script src="/static/jquery.min.js"></script>
+<script>
+    function showEditForm(button) {
+        const row = button.closest('tr');
+        const username = row.dataset.username;
+        const name = row.children[0].textContent;
+        const role = row.children[2].textContent.trim() === 'مدیر' ? 'admin' : 'user';
+
+        const existingEditRow = row.nextElementSibling;
+        if (existingEditRow && existingEditRow.classList.contains('edit-form-row')) {
+            existingEditRow.remove();
+            row.style.display = 'table-row';
+            return;
+        }
+
+        const editRow = document.createElement('tr');
+        editRow.classList.add('edit-form-row');
+        editRow.innerHTML = `
+            <td colspan="5" class="px-6 py-4">
+                <form action="/edit_user" method="post" class="space-y-3">
+                    <input type="hidden" name="username" value="${username}">
                     <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
                         <div>
-                            <label for="newUsername" class="block text-sm font-medium text-gray-700 mb-1">نام کاربری:</label>
-                            <input type="text" id="newUsername" name="username" placeholder="نام کاربری" required
-                                   class="w-full p-2 rounded-md border border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition duration-300 text-sm">
+                            <label class="block text-sm font-medium text-gray-700">نام کاربری:</label>
+                            <input type="text" value="${username}" disabled class="w-full p-2 border-gray-300 rounded-md bg-gray-200 text-sm">
                         </div>
                         <div>
-                            <label for="newPassword" class="block text-sm font-medium text-gray-700 mb-1">رمز عبور:</label>
-                            <input type="password" id="newPassword" name="password" placeholder="رمز عبور" required
-                                   class="w-full p-2 rounded-md border border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition duration-300 text-sm">
+                            <label for="editName" class="block text-sm font-medium text-gray-700">نام:</label>
+                            <input type="text" id="editName" name="name" value="${name}" required class="w-full p-2 border-gray-300 rounded-md text-sm">
                         </div>
                         <div>
-                            <label for="newRole" class="block text-sm font-medium text-gray-700 mb-1">سطح دسترسی:</label>
-                            <select id="newRole" name="role" required class="w-full p-2 rounded-md border border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition duration-300 text-sm">
-                                <option value="user">کاربر عادی</option>
-                                <option value="admin">مدیر</option>
+                            <label for="editPassword" class="block text-sm font-medium text-gray-700">رمز عبور جدید:</label>
+                            <input type="password" id="editPassword" name="password" placeholder="رمز عبور" required class="w-full p-2 border-gray-300 rounded-md text-sm">
+                        </div>
+                        <div>
+                            <label for="editRole" class="block text-sm font-medium text-gray-700">سطح دسترسی:</label>
+                            <select id="editRole" name="role" class="w-full p-2 border-gray-300 rounded-md text-sm">
+                                <option value="user" ${role === 'user' ? 'selected' : ''}>کاربر عادی</option>
+                                <option value="admin" ${role === 'admin' ? 'selected' : ''}>مدیر</option>
                             </select>
                         </div>
                     </div>
-                    <button type="submit" class="w-full bg-blue-600 text-white font-semibold py-2 rounded-lg shadow-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition duration-300 text-sm">
-                        افزودن کاربر
-                    </button>
+                    <div class="flex justify-end space-x-3 space-x-reverse mt-3">
+                        <button type="submit" class="bg-green-600 text-white font-semibold py-2 px-4 rounded-lg text-sm">ذخیره</button>
+                        <button type="button" onclick="cancelEdit(this)" class="bg-gray-400 text-white font-semibold py-2 px-4 rounded-lg text-sm">انصراف</button>
+                    </div>
                 </form>
-            </div>
+            </td>
+        `;
 
-            <div class="bg-white rounded-xl overflow-hidden shadow-2xl border border-gray-200">
-                <div class="overflow-x-auto">
-                    <table class="min-w-full">
-                        <thead class="bg-gray-50">
-                            <tr>
-                                <th class="px-6 py-3 text-right text-sm font-medium text-gray-500 uppercase tracking-wider">نام کاربری</th>
-                                <th class="px-6 py-3 text-right text-sm font-medium text-gray-500 uppercase tracking-wider">سطح دسترسی</th>
-                                <th class="px-6 py-3 text-right text-sm font-medium text-gray-500 uppercase tracking-wider">دسترسی‌ها</th>
-                                <th class="px-6 py-3 text-right text-sm font-medium text-gray-500 uppercase tracking-wider">عملیات</th>
-                            </tr>
-                        </thead>
-                        <tbody id="usersTableBody" class="bg-white divide-y divide-gray-200">
-                            {% for user in users %}
-                            <tr class="transition duration-200 hover:bg-gray-100" data-username="{{ user.username }}">
-                                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{{ user.username }}</td>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{{ 'مدیر' if user.role == 'admin' else 'کاربر عادی' }}</td>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                                    <button onclick="showPermissionsForm(this)" class="text-purple-600 hover:text-purple-900 transition duration-300 mr-2" {% if user.username == 'admin' %}disabled{% endif %}>
-                                        دسترسی‌ها
-                                    </button>
-                                </td>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium flex space-x-2 space-x-reverse">
-                                    <button onclick="showUserLog(this)" class="text-blue-600 hover:text-blue-900 transition duration-300">
-                                        مشاهده گزارش
-                                    </button>
-                                    <button onclick="showEditForm(this)" class="text-indigo-600 hover:text-indigo-900 transition duration-300" {% if user.username == 'admin' %}disabled{% endif %}>
-                                        ویرایش
-                                    </button>
-                                    <form action="/delete_user" method="post" class="inline-block" onsubmit="return confirm('آیا مطمئن هستید که می‌خواهید کاربر {{ user.username }} را حذف کنید؟');">
-                                        <input type="hidden" name="username" value="{{ user.username }}">
-                                        <button type="submit" class="text-red-600 hover:text-red-900 transition duration-300 mr-2" {% if user.username == 'admin' %}disabled{% endif %}>
-                                            حذف
-                                        </button>
-                                    </form>
-                                </td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </section>
-    </div>
+        row.after(editRow);
+        row.style.display = 'none';
+    }
 
-    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
-    <script>
-        function showEditForm(button) {
-            const row = button.closest('tr');
-            const username = row.dataset.username;
-            const role = row.children[1].textContent.trim() === 'مدیر' ? 'admin' : 'user';
+    function cancelEdit(button) {
+        const editRow = button.closest('tr');
+        const originalRow = editRow.previousElementSibling;
 
-            const existingEditRow = row.nextElementSibling;
-            if (existingEditRow && existingEditRow.classList.contains('edit-form-row')) {
-                existingEditRow.remove();
-                row.style.display = 'table-row';
-                return;
-            }
+        originalRow.style.display = 'table-row';
+        editRow.remove();
+    }
 
-            const editRow = document.createElement('tr');
-            editRow.classList.add('edit-form-row');
-            editRow.innerHTML = `
-                <td colspan="4" class="px-6 py-4">
-                    <form action="/edit_user" method="post" class="space-y-3">
-                        <input type="hidden" name="username" value="${username}">
-                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700">نام کاربری:</label>
-                                <input type="text" value="${username}" disabled class="w-full p-2 border-gray-300 rounded-md bg-gray-200 text-sm">
-                            </div>
-                            <div>
-                                <label for="editPassword" class="block text-sm font-medium text-gray-700">رمز عبور جدید:</label>
-                                <input type="password" id="editPassword" name="password" placeholder="رمز عبور" required class="w-full p-2 border-gray-300 rounded-md text-sm">
-                            </div>
-                            <div>
-                                <label for="editRole" class="block text-sm font-medium text-gray-700">سطح دسترسی:</label>
-                                <select id="editRole" name="role" class="w-full p-2 border-gray-300 rounded-md text-sm">
-                                    <option value="user" ${role === 'user' ? 'selected' : ''}>کاربر عادی</option>
-                                    <option value="admin" ${role === 'admin' ? 'selected' : ''}>مدیر</option>
-                                </select>
-                            </div>
-                        </div>
-                        <div class="flex justify-end space-x-3 space-x-reverse mt-3">
-                            <button type="submit" class="bg-green-600 text-white font-semibold py-2 px-4 rounded-lg text-sm">ذخیره</button>
-                            <button type="button" onclick="cancelEdit(this)" class="bg-gray-400 text-white font-semibold py-2 px-4 rounded-lg text-sm">انصراف</button>
-                        </div>
-                    </form>
-                </td>
-            `;
+    function showPermissionsForm(button) {
+        const row = button.closest('tr');
+        const username = row.dataset.username;
 
-            row.after(editRow);
-            row.style.display = 'none';
+        const existingPermissionsRow = row.nextElementSibling;
+        if (existingPermissionsRow && existingPermissionsRow.classList.contains('edit-form-row')) {
+            existingPermissionsRow.remove();
+            row.style.display = 'table-row';
+            return;
         }
 
-        function cancelEdit(button) {
-            const editRow = button.closest('tr');
-            const originalRow = editRow.previousElementSibling;
-
-            originalRow.style.display = 'table-row';
-            editRow.remove();
-        }
-
-        function showPermissionsForm(button) {
-            const row = button.closest('tr');
-            const username = row.dataset.username;
-
-            const existingPermissionsRow = row.nextElementSibling;
-            if (existingPermissionsRow && existingPermissionsRow.classList.contains('edit-form-row')) {
-                existingPermissionsRow.remove();
-                row.style.display = 'table-row';
-                return;
-            }
-
-            fetch('/get_permissions/' + username)
-                .then(response => response.json())
-                .then(data => {
-                    const permissions = data.permissions;
-                    const permissionsRow = document.createElement('tr');
-                    permissionsRow.classList.add('edit-form-row');
-                    permissionsRow.innerHTML = `
-                        <td colspan="4" class="px-6 py-4">
-                            <form action="/update_permissions" method="post" class="space-y-3">
-                                <input type="hidden" name="username" value="${username}">
-                                <div class="grid grid-cols-1 sm:grid-cols-4 gap-4">
-                                    <div>
-                                        <label class="flex items-center space-x-2 space-x-reverse cursor-pointer">
-                                            <input type="checkbox" name="index" class="form-checkbox h-4 w-4 text-indigo-600 rounded" ${permissions.index ? 'checked' : ''}>
-                                            <span class="text-gray-700 text-sm">ثبت تردد</span>
-                                        </label>
-                                    </div>
-                                    <div>
-                                        <label class="flex items-center space-x-2 space-x-reverse cursor-pointer">
-                                            <input type="checkbox" name="management" class="form-checkbox h-4 w-4 text-indigo-600 rounded" ${permissions.management ? 'checked' : ''}>
-                                            <span class="text-gray-700 text-sm">مدیریت کارکنان</span>
-                                        </label>
-                                    </div>
-                                    <div>
-                                        <label class="flex items-center space-x-2 space-x-reverse cursor-pointer">
-                                            <input type="checkbox" name="reports" class="form-checkbox h-4 w-4 text-indigo-600 rounded" ${permissions.reports ? 'checked' : ''}>
-                                            <span class="text-gray-700 text-sm">گزارشات</span>
-                                        </label>
-                                    </div>
-                                    <div>
-                                        <label class="flex items-center space-x-2 space-x-reverse cursor-pointer">
-                                            <input type="checkbox" name="users" class="form-checkbox h-4 w-4 text-indigo-600 rounded" ${permissions.users ? 'checked' : ''}>
-                                            <span class="text-gray-700 text-sm">مدیریت کاربران</span>
-                                        </label>
-                                    </div>
+        fetch('/get_permissions/' + username)
+            .then(response => response.json())
+            .then(data => {
+                const permissions = data.permissions;
+                const permissionsRow = document.createElement('tr');
+                permissionsRow.classList.add('edit-form-row');
+                permissionsRow.innerHTML = `
+                    <td colspan="5" class="px-6 py-4">
+                        <form action="/update_permissions" method="post" class="space-y-3">
+                            <input type="hidden" name="username" value="${username}">
+                            <div class="grid grid-cols-1 sm:grid-cols-5 gap-4">
+                                <div>
+                                    <label class="flex items-center space-x-2 space-x-reverse cursor-pointer">
+                                        <input type="checkbox" name="index" class="form-checkbox h-4 w-4 text-indigo-600 rounded" ${permissions.index ? 'checked' : ''}>
+                                        <span class="text-gray-700 text-sm">ثبت تردد</span>
+                                    </label>
                                 </div>
-                                <div class="flex justify-end space-x-3 space-x-reverse mt-3">
-                                    <button type="submit" class="bg-green-600 text-white font-semibold py-2 px-4 rounded-lg text-sm">ذخیره</button>
-                                    <button type="button" onclick="cancelPermissionsEdit(this)" class="bg-gray-400 text-white font-semibold py-2 px-4 rounded-lg text-sm">انصراف</button>
+                                <div>
+                                    <label class="flex items-center space-x-2 space-x-reverse cursor-pointer">
+                                        <input type="checkbox" name="management" class="form-checkbox h-4 w-4 text-indigo-600 rounded" ${permissions.management ? 'checked' : ''}>
+                                        <span class="text-gray-700 text-sm">مدیریت کارکنان</span>
+                                    </label>
                                 </div>
-                            </form>
-                        </td>
-                    `;
-                    row.after(permissionsRow);
-                    row.style.display = 'none';
-                });
+                                <div>
+                                    <label class="flex items-center space-x-2 space-x-reverse cursor-pointer">
+                                        <input type="checkbox" name="reports" class="form-checkbox h-4 w-4 text-indigo-600 rounded" ${permissions.reports ? 'checked' : ''}>
+                                        <span class="text-gray-700 text-sm">گزارش ترددها</span>
+                                    </label>
+                                </div>
+                                <div>
+                                    <label class="flex items-center space-x-2 space-x-reverse cursor-pointer">
+                                        <input type="checkbox" name="users" class="form-checkbox h-4 w-4 text-indigo-600 rounded" ${permissions.users ? 'checked' : ''}>
+                                        <span class="text-gray-700 text-sm">مدیریت کاربران</span>
+                                    </label>
+                                </div>
+                                <div>
+                                    <label class="flex items-center space-x-2 space-x-reverse cursor-pointer">
+                                        <input type="checkbox" name="petty_cash" class="form-checkbox h-4 w-4 text-indigo-600 rounded" ${permissions.petty_cash ? 'checked' : ''}>
+                                        <span class="text-gray-700 text-sm">ثبت تنخواه</span>
+                                    </label>
+                                </div>
+                            </div>
+                            <div class="flex justify-end space-x-3 space-x-reverse mt-3">
+                                <button type="submit" class="bg-green-600 text-white font-semibold py-2 px-4 rounded-lg text-sm">ذخیره</button>
+                                <button type="button" onclick="cancelPermissionsEdit(this)" class="bg-gray-400 text-white font-semibold py-2 px-4 rounded-lg text-sm">انصراف</button>
+                            </div>
+                        </form>
+                    </td>
+                `;
+                row.after(permissionsRow);
+                row.style.display = 'none';
+            });
+    }
+
+    function cancelPermissionsEdit(button) {
+        const editRow = button.closest('tr');
+        const originalRow = editRow.previousElementSibling;
+
+        originalRow.style.display = 'table-row';
+        editRow.remove();
+    }
+
+    function showUserLog(button) {
+        const row = button.closest('tr');
+        const username = row.dataset.username;
+
+        const existingLogRow = row.nextElementSibling;
+        if (existingLogRow && existingLogRow.classList.contains('log-row')) {
+            existingLogRow.remove();
+            return;
         }
 
-        function cancelPermissionsEdit(button) {
-            const editRow = button.closest('tr');
-            const originalRow = editRow.previousElementSibling;
-
-            originalRow.style.display = 'table-row';
-            editRow.remove();
-        }
-
-        function showUserLog(button) {
-            const row = button.closest('tr');
-            const username = row.dataset.username;
-
-            const existingLogRow = row.nextElementSibling;
-            if (existingLogRow && existingLogRow.classList.contains('log-row')) {
-                existingLogRow.remove();
-                return;
-            }
-
-            fetch('/get_user_logs/' + username)
-                .then(response => response.json())
-                .then(logs => {
-                    const logRow = document.createElement('tr');
-                    logRow.classList.add('log-row');
-                    let logTableHtml = `
-                        <td colspan="4" class="px-6 py-4">
-                            <h4 class="text-lg font-semibold text-gray-800 mb-2">گزارش فعالیت‌های ${username}</h4>
-                            <div class="bg-white rounded-lg overflow-hidden shadow-inner border border-gray-200">
-                                <div class="max-h-48 overflow-y-auto">
-                                    <table class="min-w-full">
-                                        <thead class="bg-gray-50 sticky top-0">
-                                            <tr>
-                                                <th class="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">زمان</th>
-                                                <th class="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">عملیات</th>
-                                                <th class="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">جزئیات</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody class="bg-white divide-y divide-gray-200">
-                    `;
-                    if (logs.length > 0) {
-                        logs.forEach(log => {
-                            logTableHtml += `
-                                <tr>
-                                    <td class="px-4 py-2 whitespace-nowrap text-xs text-gray-500">${log.timestamp_fa}</td>
-                                    <td class="px-4 py-2 whitespace-nowrap text-xs font-medium text-gray-900">${log.action}</td>
-                                    <td class="px-4 py-2 whitespace-nowrap text-xs text-gray-600">${log.details || '---'}</td>
-                                </tr>
-                            `;
-                        });
-                    } else {
+        fetch('/get_user_logs/' + username)
+            .then(response => response.json())
+            .then(logs => {
+                const logRow = document.createElement('tr');
+                logRow.classList.add('log-row');
+                let logTableHtml = `
+                    <td colspan="4" class="px-6 py-4">
+                        <h4 class="text-lg font-semibold text-gray-800 mb-2">گزارش فعالیت‌های ${username}</h4>
+                        <div class="bg-white rounded-lg overflow-hidden shadow-inner border border-gray-200">
+                            <div class="max-h-48 overflow-y-auto">
+                                <table class="min-w-full">
+                                    <thead class="bg-gray-50 sticky top-0">
+                                        <tr>
+                                            <th class="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">زمان</th>
+                                            <th class="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">عملیات</th>
+                                            <th class="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">جزئیات</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody class="bg-white divide-y divide-gray-200">
+                `;
+                if (logs.length > 0) {
+                    logs.forEach(log => {
                         logTableHtml += `
                             <tr>
-                                <td colspan="3" class="px-4 py-2 text-center text-gray-400 text-xs">هیچ گزارشی یافت نشد.</td>
+                                <td class="px-4 py-2 whitespace-nowrap text-xs text-gray-500">${log.timestamp_fa}</td>
+                                <td class="px-4 py-2 whitespace-nowrap text-xs font-medium text-gray-900">${log.action}</td>
+                                <td class="px-4 py-2 whitespace-nowrap text-xs text-gray-600">${log.details || '---'}</td>
                             </tr>
                         `;
-                    }
+                    });
+                } else {
                     logTableHtml += `
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </div>
-                            <div class="flex justify-end mt-3">
-                                <button type="button" onclick="hideUserLog(this)" class="bg-gray-400 text-white font-semibold py-2 px-4 rounded-lg text-sm">بستن گزارش</button>
-                            </div>
-                        </td>
+                        <tr>
+                            <td colspan="3" class="px-4 py-2 text-center text-gray-400 text-xs">هیچ گزارشی یافت نشد.</td>
+                        </tr>
                     `;
-                    logRow.innerHTML = logTableHtml;
-                    row.after(logRow);
-                });
-        }
+                }
+                logTableHtml += `
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                        <div class="flex justify-end mt-3">
+                            <button type="button" onclick="hideUserLog(this)" class="bg-gray-400 text-white font-semibold py-2 px-4 rounded-lg text-sm">بستن گزارش</button>
+                        </div>
+                    </td>
+                `;
+                logRow.innerHTML = logTableHtml;
+                row.after(logRow);
+            });
+    }
 
-        function hideUserLog(button) {
-            const logRow = button.closest('.log-row');
-            logRow.remove();
-        }
-
-    </script>
-</body>
-</html>
+    function hideUserLog(button) {
+        const logRow = button.closest('.log-row');
+        logRow.remove();
+    }
+</script>
+{% endblock %}

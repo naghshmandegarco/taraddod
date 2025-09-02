@@ -1,0 +1,171 @@
+{% extends "layout.html" %}
+
+{% block title %}ثبت تنخواه{% endblock %}
+
+{% block head_extra %}
+<style>
+    /* بهبود ظاهر فرم برای موبایل */
+    form div {
+        margin-bottom: 15px;
+    }
+    label {
+        display: block;
+        margin-bottom: 5px;
+        font-weight: bold;
+    }
+    input[type="text"], input[type="number"], input[type="date"], textarea, select {
+        width: 100%;
+        padding: 8px;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        box-sizing: border-box;
+    }
+    input[type="radio"] {
+        width: auto;
+        margin-right: 10px;
+    }
+    button[type="submit"] {
+        background-color: #4CAF50;
+        color: white;
+        padding: 12px 20px;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        width: 100%;
+        font-size: 16px;
+    }
+    button[type="submit"]:hover {
+        background-color: #45a049;
+    }
+    @media (max-width: 600px) {
+        input[type="file"] {
+            font-size: 16px; /* برای فعال کردن انتخاب از دوربین در iOS */
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+    <h1>فرم ثبت تنخواه</h1>
+    <p>لطفاً اطلاعات مربوط به تنخواه را وارد کنید.</p>
+
+    <form method="post" enctype="multipart/form-data">
+        <div>
+            <label for="date">تاریخ:</label>
+            <input type="date" id="date" name="date" required>
+        </div>
+
+        <div>
+            <label for="description">شرح:</label>
+            <input type="text" id="description" name="description" required>
+        </div>
+
+        <div>
+            <label for="unit">واحد:</label>
+            <input type="text" id="unit" name="unit">
+        </div>
+
+        <div>
+            <label for="quantity">مقدار:</label>
+            <input type="number" id="quantity" name="quantity" min="0" step="0.01">
+        </div>
+
+        <div>
+            <label for="price">فی (ریال):</label>
+            <input type="number" id="price" name="price" min="0" step="0.01">
+        </div>
+
+        <div>
+            <label for="discount">تخفیف (درصد یا عدد):</label>
+            <input type="text" id="discount" name="discount">
+        </div>
+
+        <div>
+            <label for="total_amount">مبلغ کل (ریال):</label>
+            <input type="number" id="total_amount" name="total_amount" min="0" step="0.01">
+        </div>
+
+        <div>
+            <label for="usage_location">محل استفاده:</label>
+            <input type="text" id="usage_location" name="usage_location">
+        </div>
+
+        <div>
+            <label for="source_location">محل تامین:</label>
+            <input type="text" id="source_location" name="source_location">
+        </div>
+
+        <div>
+            <label for="notes">توضیحات:</label>
+            <textarea id="notes" name="notes" rows="4"></textarea>
+        </div>
+
+        <div>
+            <label for="invoice_number">شماره فاکتور:</label>
+            <input type="text" id="invoice_number" name="invoice_number">
+        </div>
+
+        <div>
+            <label>وضعیت تسویه:</label>
+            <input type="radio" id="settlement_remaining" name="settlement_status" value="مانده" checked>
+            <label for="settlement_remaining">مانده</label>
+            <input type="radio" id="settlement_settled" name="settlement_status" value="تسویه شده">
+            <label for="settlement_settled">تسویه شده</label>
+        </div>
+
+        <div>
+            <label for="payer">پرداخت کننده:</label>
+            <select id="payer" name="payer" required>
+                {% for user in users %}
+                    {% if session['user']['username'] == 'کاربر ارشد' and session['user']['name'] == 'admin' or (user.username != 'کاربر ارشد' or user.name != 'admin') %}
+                        <option value="{{ user.name }}" {% if session['user']['name'] == user.name %}selected{% endif %}>{{ user.name }}</option>
+                    {% endif %}
+                {% endfor %}
+            </select>
+        </div>
+
+        <div>
+            <label for="receipt_image">عکس رسید:</label>
+            <input type="file" id="receipt_image" name="receipt_image" accept="image/jpeg,image/png,image/bmp,application/pdf" capture="environment" />
+            <small>فقط فایل‌های jpg, jpeg, png, bmp و pdf مجاز هستند.</small>
+        </div>
+
+        <button type="submit">ثبت تنخواه</button>
+    </form>
+{% endblock %}
+
+{% block scripts_extra %}
+<script>
+// اسکریپت برای بهبود انتخاب فایل در موبایل
+document.addEventListener('DOMContentLoaded', function() {
+    var fileInput = document.getElementById('receipt_image');
+    if (fileInput) {
+        // تنظیم accept برای محدود کردن به فرمت‌های مشخص‌شده
+        fileInput.setAttribute('accept', 'image/jpeg,image/png,image/bmp,application/pdf');
+        
+        // برای iOS، تنظیم capture برای نمایش هر دو گزینه (دوربین و گالری)
+        if (/iPad|iPhone|iPod/.test(navigator.userAgent)) {
+            fileInput.setAttribute('capture', '');
+        }
+        
+        // برای Android، capture="environment" برای استفاده از دوربین به عنوان پیش‌فرض
+        if (/Android/.test(navigator.userAgent)) {
+            fileInput.setAttribute('capture', 'environment');
+        }
+
+        // اعتبارسنجی فرمت فایل در سمت کلاینت
+        fileInput.addEventListener('change', function(event) {
+            const validExtensions = ['jpg', 'jpeg', 'png', 'bmp', 'pdf'];
+            const file = event.target.files[0];
+            if (file) {
+                const fileExt = file.name.split('.').pop().toLowerCase();
+                if (!validExtensions.includes(fileExt)) {
+                    alert('فقط فایل‌های با پسوند jpg, jpeg, png, bmp یا pdf مجاز هستند.');
+                    fileInput.value = ''; // پاک کردن فایل انتخاب‌شده
+                }
+            }
+        });
+    }
+});
+</script>
+{% endblock %}

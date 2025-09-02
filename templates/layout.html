@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}{% endblock %}</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="/static/tailwind.js"></script>
+    <!-- jQuery -->
+    <script src="/static/jquery.min.js"></script>
+    <!-- Persian Datepicker CSS -->
+    <link rel="stylesheet" href="/static/persian-datepicker.min.css">
+    <!-- Custom Styles -->
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        table {
+            border-collapse: separate;
+            border-spacing: 0 10px; /* Space between rows */
+        }
+        .edit-form-row {
+            background-color: #e2e8f0;
+        }
+        /* Style for the log table row */
+        .log-row {
+            background-color: #e2e8f0;
+        }
+        .message-box {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            padding: 20px;
+            background-color: white;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            z-index: 1000;
+        }
+        .message-box button {
+            margin-top: 10px;
+        }
+    </style>
+    {% block head_extra %}{% endblock %}
+</head>
+<body class="bg-gray-100 p-4 sm:p-8 flex items-center justify-center min-h-screen">
+    <div class="container mx-auto max-w-4xl bg-white p-6 sm:p-10 rounded-xl shadow-2xl border border-gray-200">
+        <!-- Flash Messages -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            <div class="mb-4">
+            {% for category, message in messages %}
+                <div class="p-3 rounded-lg text-white font-semibold {% if category == 'success' %}bg-green-500{% elif category == 'error' %}bg-red-500{% elif category == 'warning' %}bg-yellow-500{% endif %}">
+                    {{ message }}
+                </div>
+            {% endfor %}
+            </div>
+        {% endif %}
+        {% endwith %}
+
+        <!-- Navigation Buttons -->
+        <nav class="flex flex-col sm:flex-row justify-center space-x-0 sm:space-x-4 space-x-reverse mb-6 flex-wrap">
+            {% if session.get('user') and session['user']['permissions']['index'] %}
+            <a href="/" class="bg-gray-200 text-gray-800 text-sm font-semibold py-2 px-3 rounded-lg shadow-md hover:bg-gray-300 transition duration-300 my-1 sm:my-0">ثبت تردد</a>
+            {% endif %}
+            {% if session.get('user') and session['user']['permissions']['management'] %}
+            <a href="/management" class="bg-gray-200 text-gray-800 text-sm font-semibold py-2 px-3 rounded-lg shadow-md hover:bg-gray-300 transition duration-300 my-1 sm:my-0">مدیریت کارکنان</a>
+            {% endif %}
+            {% if session.get('user') and session['user']['permissions']['reports'] %}
+            <a href="/reports" class="bg-gray-200 text-gray-800 text-sm font-semibold py-2 px-3 rounded-lg shadow-md hover:bg-gray-300 transition duration-300 my-1 sm:my-0">گزارش ترددها</a>
+            {% endif %}
+            {% if session.get('user') and session['user']['permissions']['users'] %}
+            <a href="/users" class="bg-gray-200 text-gray-800 text-sm font-semibold py-2 px-3 rounded-lg shadow-md hover:bg-gray-300 transition duration-300 my-1 sm:my-0">کاربران</a>
+            {% endif %}
+            {% if session.get('user') and session['user']['permissions']['petty_cash'] %}
+            <a href="/petty_cash" class="bg-gray-200 text-gray-800 text-sm font-semibold py-2 px-3 rounded-lg shadow-md hover:bg-gray-300 transition duration-300 my-1 sm:my-0">ثبت تنخواه</a>
+            {% endif %}
+            <a href="/logout" class="bg-red-500 text-white text-sm font-semibold py-2 px-3 rounded-lg shadow-md hover:bg-red-600 transition duration-300 my-1 sm:my-0">خروج</a>
+        </nav>
+        
+        <!-- Current User Display -->
+        {% if session.get('user') %}
+        <p class="text-center text-sm font-medium text-gray-600 mb-6">کاربر جاری: <span class="font-bold text-indigo-600">{{ session['user']['name'] }}</span></p>
+        {% endif %}
+
+        {% block content %}{% endblock %}
+    </div>
+    {% block scripts_extra %}{% endblock %}
+</body>
+</html>

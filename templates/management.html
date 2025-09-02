@@ -1,167 +1,133 @@
-<!DOCTYPE html>
-<html lang="fa" dir="rtl">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>مدیریت کارکنان</title>
-    <!-- Tailwind CSS CDN -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <!-- jQuery CDN -->
-    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
-        body {
-            font-family: 'Inter', sans-serif;
-        }
-        table {
-            border-collapse: separate;
-            border-spacing: 0 10px; /* Space between rows */
-        }
-    </style>
-</head>
-<body class="bg-gray-100 p-4 sm:p-8 flex items-center justify-center min-h-screen">
-    <div class="container mx-auto max-w-4xl bg-white p-6 sm:p-10 rounded-xl shadow-2xl border border-gray-200">
-        <!-- Header -->
-        <header class="text-center mb-6">
-            <h1 class="text-2xl sm:text-3xl font-bold text-gray-800 mb-1">مدیریت کارکنان</h1>
-            <p class="text-gray-500 text-sm">افزودن، ویرایش و حذف اطلاعات کارکنان.</p>
-        </header>
+{% extends "layout.html" %}
 
-        <!-- Navigation Buttons -->
-        <nav class="flex flex-col sm:flex-row justify-center space-x-0 sm:space-x-4 space-x-reverse mb-6 flex-wrap">
-            {% if session.get('user') and session['user']['permissions']['index'] %}
-            <a href="/" class="bg-gray-200 text-gray-800 text-sm font-semibold py-2 px-3 rounded-lg shadow-md hover:bg-gray-300 transition duration-300 my-1 sm:my-0">ثبت تردد</a>
-            {% endif %}
-            {% if session.get('user') and session['user']['permissions']['management'] %}
-            <a href="/management" class="bg-indigo-600 text-white text-sm font-semibold py-2 px-3 rounded-lg shadow-md hover:bg-indigo-700 transition duration-300 my-1 sm:my-0">مدیریت کارکنان</a>
-            {% endif %}
-            {% if session.get('user') and session['user']['permissions']['reports'] %}
-            <a href="/reports" class="bg-gray-200 text-gray-800 text-sm font-semibold py-2 px-3 rounded-lg shadow-md hover:bg-gray-300 transition duration-300 my-1 sm:my-0">گزارشات</a>
-            {% endif %}
-            {% if session.get('user') and session['user']['permissions']['users'] %}
-            <a href="/users" class="bg-gray-200 text-gray-800 text-sm font-semibold py-2 px-3 rounded-lg shadow-md hover:bg-gray-300 transition duration-300 my-1 sm:my-0">کاربران</a>
-            {% endif %}
-            <a href="/logout" class="bg-red-500 text-white text-sm font-semibold py-2 px-3 rounded-lg shadow-md hover:bg-red-600 transition duration-300 my-1 sm:my-0">خروج</a>
-        </nav>
-        <!-- Current User Display -->
-        {% if session.get('user') %}
-        <p class="text-center text-sm font-medium text-gray-600 mb-6">کاربر جاری: <span class="font-bold text-indigo-600">{{ session['user']['username'] }}</span></p>
-        {% endif %}
+{% block title %}مدیریت کارکنان{% endblock %}
 
-        <!-- Employee Management Section -->
-        <section>
-            <div class="flex justify-between items-center mb-4">
-                <h2 class="text-2xl font-bold text-gray-800">لیست کارکنان</h2>
-                <!-- Employee Import/Export Buttons -->
-                <div class="flex space-x-2 space-x-reverse flex-wrap justify-end">
-                    <a href="/export/employees" class="bg-gray-600 text-white text-sm font-semibold py-2 px-4 rounded-lg shadow-md hover:bg-gray-700 transition duration-300 flex items-center space-x-2 space-x-reverse my-1">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                            <path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM6.293 6.707a1 1 0 010-1.414L9 3.586V13a1 1 0 112 0V3.586l2.707 2.707a1 1 0 11-1.414 1.414L10 5.414l-2.293 2.293a1 1 0 01-1.414 0z" clip-rule="evenodd" />
-                        </svg>
-                        <span>خروجی گرفتن</span>
-                    </a>
-                    <label for="import-file" class="bg-blue-600 text-white text-sm font-semibold py-2 px-4 rounded-lg shadow-md hover:bg-blue-700 transition duration-300 flex items-center space-x-2 space-x-reverse cursor-pointer my-1">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                            <path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM5.293 6.707a1 1 0 011.414 0L10 10.586l3.293-3.879a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
-                        </svg>
-                        <span>ورود از فایل</span>
-                        <input type="file" id="import-file" class="hidden" accept=".csv" onchange="document.getElementById('import-form').submit();">
-                    </label>
-                    <form id="import-form" action="/import/employees" method="post" enctype="multipart/form-data" class="hidden">
-                        <input type="file" name="file" id="hidden-import-file" accept=".csv">
-                    </form>
-                </div>
-            </div>
+{% block head_extra %}
+<!-- jQuery CDN -->
+<script src="/static/jquery.min.js"></script>
+{% endblock %}
 
-            <div class="bg-gray-50 p-4 rounded-lg shadow-inner mb-6">
-                <form action="/add_employee" method="post" class="space-y-3">
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <div>
-                            <label for="newEmployeeId" class="block text-sm font-medium text-gray-700 mb-1">شماره پرسنلی جدید:</label>
-                            <input type="text" id="newEmployeeId" name="employeeId" placeholder="شماره پرسنلی" required
-                                   class="w-full p-2 rounded-lg border-2 border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition duration-300"
-                                   value="{{ next_employee_id if next_employee_id else '' }}">
-                        </div>
-                        <div>
-                            <label for="newEmployeeName" class="block text-sm font-medium text-gray-700 mb-1">نام و نام خانوادگی:</label>
-                            <input type="text" id="newEmployeeName" name="name" placeholder="نام کارمند" required
-                                   class="w-full p-2 rounded-lg border-2 border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition duration-300">
-                        </div>
-                    </div>
-                    <button type="submit" class="w-full bg-blue-600 text-white text-sm font-semibold py-2 rounded-lg shadow-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition duration-300">
-                        افزودن کارمند جدید
-                    </button>
-                </form>
-            </div>
-            
-            <!-- Employee Search Field -->
-            <div class="bg-gray-50 p-4 rounded-lg shadow-inner mb-6">
-                <label for="employee-search" class="block text-sm font-medium text-gray-700 mb-1">جستجو در لیست کارکنان:</label>
-                <input type="text" id="employee-search" placeholder="جستجو بر اساس نام یا شماره پرسنلی" class="w-full p-2 rounded-md border border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition duration-300 text-sm">
-            </div>
+{% block content %}
+<!-- Header -->
+<header class="text-center mb-6">
+    <h1 class="text-2xl sm:text-3xl font-bold text-gray-800 mb-1">مدیریت کارکنان</h1>
+    <p class="text-gray-500 text-sm">افزودن، ویرایش و حذف اطلاعات کارکنان.</p>
+</header>
 
-            <!-- Employee List Table -->
-            <div class="bg-white rounded-lg overflow-hidden shadow-lg border border-gray-200">
-                <div class="overflow-x-auto max-h-72">
-                    <table class="min-w-full">
-                        <thead class="bg-gray-50 sticky top-0">
-                            <tr>
-                                <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">شماره پرسنلی</th>
-                                <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">نام</th>
-                                <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">عملیات</th>
-                            </tr>
-                        </thead>
-                        <tbody id="employeeTableBody" class="bg-white divide-y divide-gray-200">
-                            {% for employee in employees %}
-                            <tr class="employee-item transition duration-200 hover:bg-gray-100">
-                                <td class="px-6 py-4 text-sm font-medium text-gray-900 whitespace-nowrap">{{ employee.employee_id }}</td>
-                                <td class="px-6 py-4 text-sm font-medium text-gray-900 whitespace-nowrap">{{ employee.name }}</td>
-                                <td class="px-6 py-4 text-sm font-medium whitespace-nowrap">
-                                    <form action="/delete_employee" method="post" class="inline-block" onsubmit="return confirm('آیا مطمئن هستید که می‌خواهید {{ employee.name }} را حذف کنید؟');">
-                                        <input type="hidden" name="employeeId" value="{{ employee.employee_id }}">
-                                        <button type="submit" class="text-red-600 hover:text-red-900 transition duration-300">
-                                            حذف
-                                        </button>
-                                    </form>
-                                    <!-- EXPORT BUTTON FOR SINGLE EMPLOYEE -->
-                                    <a href="/export/employee/{{ employee.employee_id }}" class="mr-4 text-blue-600 hover:text-blue-900 transition duration-300">
-                                        خروجی
-                                    </a>
-                                </td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </section>
+<!-- Employee Management Section -->
+<section>
+    <div class="flex justify-between items-center mb-4">
+        <h2 class="text-2xl font-bold text-gray-800">لیست کارکنان</h2>
+        <!-- Employee Import/Export Buttons -->
+        <div class="flex space-x-2 space-x-reverse flex-wrap justify-end">
+            <a href="/export/employees" class="bg-gray-600 text-white text-sm font-semibold py-2 px-4 rounded-lg shadow-md hover:bg-gray-700 transition duration-300 flex items-center space-x-2 space-x-reverse my-1">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                    <path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM6.293 6.707a1 1 0 010-1.414L9 3.586V13a1 1 0 112 0V3.586l2.707 2.707a1 1 0 11-1.414 1.414L10 5.414l-2.293 2.293a1 1 0 01-1.414 0z" clip-rule="evenodd" />
+                </svg>
+                <span>خروجی گرفتن</span>
+            </a>
+            <label for="import-file" class="bg-blue-600 text-white text-sm font-semibold py-2 px-4 rounded-lg shadow-md hover:bg-blue-700 transition duration-300 flex items-center space-x-2 space-x-reverse cursor-pointer my-1">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                    <path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM5.293 6.707a1 1 0 011.414 0L10 10.586l3.293-3.879a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
+                </svg>
+                <span>ورود از فایل</span>
+                <input type="file" id="import-file" class="hidden" accept=".csv" onchange="document.getElementById('import-form').submit();">
+            </label>
+            <form id="import-form" action="/import/employees" method="post" enctype="multipart/form-data" class="hidden">
+                <input type="file" name="file" id="hidden-import-file" accept=".csv">
+            </form>
+        </div>
     </div>
 
-    <script>
-        document.getElementById('import-file').addEventListener('change', function() {
-            if (this.files.length > 0) {
-                document.getElementById('hidden-import-file').files = this.files;
-                document.getElementById('import-form').submit();
-            }
-        });
-        
-        document.addEventListener('DOMContentLoaded', () => {
-            const employeeSearchInput = document.getElementById('employee-search');
-            const allEmployees = Array.from(document.querySelectorAll('.employee-item'));
+    <div class="bg-gray-50 p-4 rounded-lg shadow-inner mb-6">
+        <form action="/add_employee" method="post" class="space-y-3">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                    <label for="newEmployeeId" class="block text-sm font-medium text-gray-700 mb-1">شماره پرسنلی جدید:</label>
+                    <input type="text" id="newEmployeeId" name="employeeId" placeholder="شماره پرسنلی" required
+                           class="w-full p-2 rounded-lg border-2 border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition duration-300"
+                           value="{{ next_employee_id if next_employee_id else '' }}">
+                </div>
+                <div>
+                    <label for="newEmployeeName" class="block text-sm font-medium text-gray-700 mb-1">نام و نام خانوادگی:</label>
+                    <input type="text" id="newEmployeeName" name="name" placeholder="نام کارمند" required
+                           class="w-full p-2 rounded-lg border-2 border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition duration-300">
+                </div>
+            </div>
+            <button type="submit" class="w-full bg-blue-600 text-white text-sm font-semibold py-2 rounded-lg shadow-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition duration-300">
+                افزودن کارمند جدید
+            </button>
+        </form>
+    </div>
+    
+    <!-- Employee Search Field -->
+    <div class="bg-gray-50 p-4 rounded-lg shadow-inner mb-6">
+        <label for="employee-search" class="block text-sm font-medium text-gray-700 mb-1">جستجو در لیست کارکنان:</label>
+        <input type="text" id="employee-search" placeholder="جستجو بر اساس نام یا شماره پرسنلی" class="w-full p-2 rounded-md border border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition duration-300 text-sm">
+    </div>
 
-            // Filter functionality for employees
-            employeeSearchInput.addEventListener('keyup', (event) => {
-                const searchTerm = event.target.value.toLowerCase();
-                allEmployees.forEach(item => {
-                    const text = item.textContent.toLowerCase();
-                    if (text.includes(searchTerm)) {
-                        item.style.display = 'table-row';
-                    } else {
-                        item.style.display = 'none';
-                    }
-                });
+    <!-- Employee List Table -->
+    <div class="bg-white rounded-lg overflow-hidden shadow-lg border border-gray-200">
+        <div class="overflow-x-auto max-h-72">
+            <table class="min-w-full">
+                <thead class="bg-gray-50 sticky top-0">
+                    <tr>
+                        <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">شماره پرسنلی</th>
+                        <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">نام</th>
+                        <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">عملیات</th>
+                    </tr>
+                </thead>
+                <tbody id="employeeTableBody" class="bg-white divide-y divide-gray-200">
+                    {% for employee in employees %}
+                    <tr class="employee-item transition duration-200 hover:bg-gray-100">
+                        <td class="px-6 py-4 text-sm font-medium text-gray-900 whitespace-nowrap">{{ employee.employee_id }}</td>
+                        <td class="px-6 py-4 text-sm font-medium text-gray-900 whitespace-nowrap">{{ employee.name }}</td>
+                        <td class="px-6 py-4 text-sm font-medium whitespace-nowrap">
+                            <form action="/delete_employee" method="post" class="inline-block" onsubmit="return confirm('آیا مطمئن هستید که می‌خواهید {{ employee.name }} را حذف کنید؟');">
+                                <input type="hidden" name="employeeId" value="{{ employee.employee_id }}">
+                                <button type="submit" class="text-red-600 hover:text-red-900 transition duration-300">
+                                    حذف
+                                </button>
+                            </form>
+                            <!-- EXPORT BUTTON FOR SINGLE EMPLOYEE -->
+                            <a href="/export/employee/{{ employee.employee_id }}" class="mr-4 text-blue-600 hover:text-blue-900 transition duration-300">
+                                خروجی
+                            </a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</section>
+{% endblock %}
+
+{% block scripts_extra %}
+<script>
+    document.getElementById('import-file').addEventListener('change', function() {
+        if (this.files.length > 0) {
+            document.getElementById('hidden-import-file').files = this.files;
+            document.getElementById('import-form').submit();
+        }
+    });
+    
+    document.addEventListener('DOMContentLoaded', () => {
+        const employeeSearchInput = document.getElementById('employee-search');
+        const allEmployees = Array.from(document.querySelectorAll('.employee-item'));
+
+        // Filter functionality for employees
+        employeeSearchInput.addEventListener('keyup', (event) => {
+            const searchTerm = event.target.value.toLowerCase();
+            allEmployees.forEach(item => {
+                const text = item.textContent.toLowerCase();
+                if (text.includes(searchTerm)) {
+                    item.style.display = 'table-row';
+                } else {
+                    item.style.display = 'none';
+                }
             });
         });
-    </script>
-</body>
-</html>
+    });
+</script>
+{% endblock %}

@@ -1,7 +1,7 @@
 # app.py
 # این فایل بک‌اند (Backend) برنامه است و منطق اصلی را مدیریت می‌کند.
 
-from flask import Flask, render_template, request, redirect, url_for, jsonify, Response, session, send_from_directory
+from flask import Flask, render_template, request, redirect, url_for, jsonify, Response, session, send_from_directory, flash
 import sqlite3
 from datetime import datetime
 import os
@@ -12,11 +12,12 @@ import urllib.parse
 import zipfile
 from functools import wraps
 import json
+from werkzeug.security import generate_password_hash, check_password_hash
 
 # یک فایل دیتابیس به نام time_tracker.db ایجاد می‌کنیم
 DB_FILE = 'time_tracker.db'
 app = Flask(__name__)
-app.secret_key = 'your_secret_key_here' # Change this to a random secret key
+app.secret_key = 'a_very_secure_and_random_key_that_is_changed_often' # تغییر به یک کلید امنیتی قوی
 
 # Helper function to check for permissions
 def has_permission(page_name):
@@ -31,16 +32,19 @@ def login_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
         if 'user' not in session:
+            flash("لطفاً برای دسترسی به این صفحه وارد شوید.", "error")
             return redirect(url_for('login'))
         return f(*args, **kwargs)
     return decorated_function
 
+# Decorator to check if user has a specific role
 def role_required(role):
     def decorator(f):
         @wraps(f)
         def decorated_function(*args, **kwargs):
             if 'user' not in session or session['user']['role'] != role:
-                return "Access Denied", 403
+                flash("شما به این بخش دسترسی ندارید.", "error")
+                return redirect(url_for('index'))
             return f(*args, **kwargs)
         return decorated_function
     return decorator
@@ -51,11 +55,12 @@ def get_db_connection():
     conn.row_factory = sqlite3.Row
     return conn
 
-# تابع برای ایجاد جداول دیتابیس
+# تابع برای ایجاد جداول دیتابیس و بروزرسانی ساختار
 def init_db():
     conn = get_db_connection()
+    cursor = conn.cursor()
     # جدول time_logs: برای ثبت ورود و خروج
-    conn.execute('''
+    cursor.execute('''
         CREATE TABLE IF NOT EXISTS time_logs (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             employee_id TEXT NOT NULL,
@@ -64,23 +69,25 @@ def init_db():
         )
     ''')
     # جدول employees: برای مدیریت اطلاعات کارکنان
-    conn.execute('''
+    cursor.execute('''
         CREATE TABLE IF NOT EXISTS employees (
             employee_id TEXT PRIMARY KEY,
             name TEXT NOT NULL
         )
     ''')
-    # NEW TABLE: users for login and access control
-    conn.execute('''
+    # جدول users: برای ورود و کنترل دسترسی (رمز عبور حالا هش شده است)
+    # اضافه شدن فیلد "name" به جدول users
+    cursor.execute('''
         CREATE TABLE IF NOT EXISTS users (
             username TEXT PRIMARY KEY,
+            name TEXT NOT NULL,
             password TEXT NOT NULL,
             role TEXT NOT NULL,
             permissions TEXT NOT NULL DEFAULT '{}'
         )
     ''')
-    # NEW TABLE: user_logs for logging user actions
-    conn.execute('''
+    # جدول user_logs: برای ثبت فعالیت‌های کاربران
+    cursor.execute('''
         CREATE TABLE IF NOT EXISTS user_logs (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             username TEXT NOT NULL,
@@ -89,14 +96,55 @@ def init_db():
             timestamp TEXT NOT NULL
         )
     ''')
+    # NEW TABLE: petty_cash for managing petty cash transactions
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS petty_cash (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            date TEXT NOT NULL,
+            description TEXT,
+            unit TEXT,
+            amount INTEGER,
+            unit_price REAL,
+            discount TEXT,
+            total_amount REAL,
+            location TEXT,
+            notes TEXT,
+            source TEXT,
+            invoice_number TEXT,
+            settlement_status TEXT NOT NULL,
+            payer TEXT NOT NULL,
+            receipt_image BLOB,
+            timestamp TEXT NOT NULL
+        )
+    ''')
+    
+    # Check if 'name' column exists in 'users' table, and add it if not
+    try:
+        cursor.execute("SELECT name FROM users LIMIT 1")
+    except sqlite3.OperationalError:
+        cursor.execute("ALTER TABLE users ADD COLUMN name TEXT")
+        cursor.execute("UPDATE users SET name = username WHERE name IS NULL")
+        
     conn.commit()
     conn.close()
 
 # این تابع در هنگام اجرای برنامه، دیتابیس را آماده می‌کند
-if not os.path.exists(DB_FILE):
-    init_db()
+# با فراخوانی init_db در هر بار اجرا، از وجود تمام جداول اطمینان حاصل می‌شود.
+init_db()
 
-# NEW HELPER FUNCTION: Log user actions
+# این بخش فقط در صورتی اجرا می‌شود که کاربر admin برای اولین بار ایجاد شود.
+conn = get_db_connection()
+try:
+    admin_exists = conn.execute("SELECT 1 FROM users WHERE username = 'admin'").fetchone()
+    if not admin_exists:
+        hashed_password = generate_password_hash('admin')
+        conn.execute("INSERT INTO users (username, name, password, role, permissions) VALUES (?, ?, ?, ?, ?)", 
+                     ('admin', 'مدیر سیستم', hashed_password, 'admin', json.dumps({'index': True, 'management': True, 'reports': True, 'users': True, 'petty_cash': True})))
+        conn.commit()
+finally:
+    conn.close()
+
+# تابع کمکی برای ثبت فعالیت‌های کاربر
 def log_action(username, action, details=""):
     conn = get_db_connection()
     try:
@@ -114,23 +162,26 @@ def log_action(username, action, details=""):
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
-        username = request.form['username'].lower() # Case-insensitive login
+        username = request.form['username'].lower()
         password = request.form['password']
         
         conn = get_db_connection()
-        user = conn.execute("SELECT * FROM users WHERE username = ? AND password = ?", (username, password)).fetchone()
+        user = conn.execute("SELECT * FROM users WHERE username = ?", (username,)).fetchone()
         conn.close()
         
-        if user:
+        if user and check_password_hash(user['password'], password):
             session['user'] = {
                 'username': user['username'],
+                'name': user['name'],
                 'role': user['role'],
                 'permissions': json.loads(user['permissions'])
             }
             log_action(user['username'], 'ورود به سیستم', 'ورود موفق')
+            flash("ورود با موفقیت انجام شد.", "success")
             return redirect(url_for('index'))
         else:
-            return "Invalid username or password"
+            flash("نام کاربری یا رمز عبور اشتباه است.", "error")
+            return redirect(url_for('login'))
     
     return render_template('login.html')
 
@@ -141,15 +192,16 @@ def logout():
     if username:
         log_action(username, 'خروج از سیستم', 'خروج موفق')
     session.pop('user', None)
+    flash("شما با موفقیت از سیستم خارج شدید.", "success")
     return redirect(url_for('login'))
 
 # روت برای صفحه اصلی
 @app.route('/')
+@login_required
 def index():
-    if 'user' not in session:
-        return redirect(url_for('login'))
     if not has_permission('index'):
-        return "Access Denied", 403
+        flash("شما به این بخش دسترسی ندارید.", "error")
+        return redirect(url_for('login'))
         
     conn = get_db_connection()
     try:
@@ -159,7 +211,7 @@ def index():
         
         present_employees_names = []
         
-        employees_dict = {emp['employee_id']: emp['name'] for emp in employees}
+        employees_dict = {str(emp['employee_id']): emp['name'] for emp in employees}
 
         latest_actions = conn.execute('''
             SELECT employee_id, action
@@ -210,7 +262,8 @@ def check_status():
 @login_required
 def management():
     if not has_permission('management'):
-        return "Access Denied", 403
+        flash("شما به این بخش دسترسی ندارید.", "error")
+        return redirect(url_for('index'))
 
     conn = get_db_connection()
     try:
@@ -238,11 +291,11 @@ def get_next_employee_id(conn):
 @login_required
 def reports():
     if not has_permission('reports'):
-        return "Access Denied", 403
+        flash("شما به این بخش دسترسی ندارید.", "error")
+        return redirect(url_for('index'))
 
     conn = get_db_connection()
     
-    # NEW LOGIC: Filter based on employee_id and date range
     employee_id_filter = request.args.get('employee_id')
     start_date_fa = request.args.get('start_date')
     end_date_fa = request.args.get('end_date')
@@ -267,6 +320,7 @@ def reports():
             conditions.append('tl.timestamp >= ?')
             params.append(g_date.strftime('%Y-%m-%d 00:00:00'))
         except (ValueError, IndexError):
+            flash("فرمت تاریخ شروع نامعتبر است.", "error")
             pass
             
     if end_date_fa:
@@ -277,6 +331,7 @@ def reports():
             conditions.append('tl.timestamp <= ?')
             params.append(g_date.strftime('%Y-%m-%d 23:59:59'))
         except (ValueError, IndexError):
+            flash("فرمت تاریخ پایان نامعتبر است.", "error")
             pass
 
     if conditions:
@@ -284,7 +339,6 @@ def reports():
 
     query += ' ORDER BY tl.timestamp DESC'
 
-    conn = get_db_connection()
     try:
         records = conn.execute(query, params).fetchall()
         employees = conn.execute('SELECT * FROM employees ORDER BY name').fetchall()
@@ -317,13 +371,15 @@ def reports():
 @login_required
 def bulk_submit():
     if not has_permission('index'):
-        return "Access Denied", 403
+        flash("شما به این بخش دسترسی ندارید.", "error")
+        return redirect(url_for('index'))
 
     employee_ids = request.form.getlist('employee_ids')
     action = request.form.get('action')
     timestamps_list = request.form.getlist('timestamps')
     
     if not employee_ids or not action or not timestamps_list:
+        flash("هیچ کارمندی برای ثبت انتخاب نشد.", "warning")
         return redirect(url_for('index'))
 
     conn = get_db_connection()
@@ -345,11 +401,12 @@ def bulk_submit():
 
             conn.execute('INSERT INTO time_logs (employee_id, action, timestamp) VALUES (?, ?, ?)',
                          (employee_id, action, timestamp))
-            # log_action moved out of loop to prevent database lock
         conn.commit()
+        flash(f"ثبت {action} برای {len(employee_ids)} کارمند با موفقیت انجام شد.", "success")
         log_action(session['user']['username'], f'ثبت {action}', f'برای کارمندان: {", ".join(employee_ids)}')
     except Exception as e:
         conn.rollback()
+        flash("خطایی در ثبت اطلاعات رخ داد.", "error")
         print(f"Error submitting bulk data: {e}")
     finally:
         conn.close()
@@ -361,7 +418,8 @@ def bulk_submit():
 @login_required
 def edit_log(log_id):
     if not has_permission('reports'):
-        return "Access Denied", 403
+        flash("شما به این بخش دسترسی ندارید.", "error")
+        return redirect(url_for('reports'))
 
     employee_id = request.form['employeeId']
     action = request.form['action']
@@ -373,7 +431,8 @@ def edit_log(log_id):
         miladi_dt = shamsi_dt.togregorian()
         timestamp = miladi_dt.strftime('%Y-%m-%d %H:%M:%S')
     except ValueError:
-        return "Invalid date or time format.", 400
+        flash("فرمت تاریخ یا ساعت نامعتبر است.", "error")
+        return redirect(url_for('reports'))
 
     conn = get_db_connection()
     try:
@@ -383,7 +442,11 @@ def edit_log(log_id):
             WHERE id = ?
         ''', (employee_id, action, timestamp, log_id))
         conn.commit()
+        flash("رکورد با موفقیت ویرایش شد.", "success")
         log_action(session['user']['username'], 'ویرایش رکورد تردد', f'رکورد با شناسه {log_id} ویرایش شد.')
+    except Exception as e:
+        flash("خطایی در ویرایش رکورد رخ داد.", "error")
+        print(f"Error editing log: {e}")
     finally:
         conn.close()
     return redirect(url_for('reports'))
@@ -393,13 +456,18 @@ def edit_log(log_id):
 @login_required
 def delete_log(log_id):
     if not has_permission('reports'):
-        return "Access Denied", 403
+        flash("شما به این بخش دسترسی ندارید.", "error")
+        return redirect(url_for('reports'))
 
     conn = get_db_connection()
     try:
         conn.execute('DELETE FROM time_logs WHERE id = ?', (log_id,))
         conn.commit()
+        flash("رکورد با موفقیت حذف شد.", "success")
         log_action(session['user']['username'], 'حذف رکورد تردد', f'رکورد با شناسه {log_id} حذف شد.')
+    except Exception as e:
+        flash("خطایی در حذف رکورد رخ داد.", "error")
+        print(f"Error deleting log: {e}")
     finally:
         conn.close()
     return redirect(url_for('reports'))
@@ -409,13 +477,18 @@ def delete_log(log_id):
 @login_required
 def clear_data():
     if not has_permission('reports'):
-        return "Access Denied", 403
+        flash("شما به این بخش دسترسی ندارید.", "error")
+        return redirect(url_for('reports'))
 
     conn = get_db_connection()
     try:
         conn.execute('DELETE FROM time_logs')
         conn.commit()
+        flash("تمام داده‌ها با موفقیت پاک شدند.", "success")
         log_action(session['user']['username'], 'پاک کردن تمام داده‌های تردد')
+    except Exception as e:
+        flash("خطایی در پاک کردن داده‌ها رخ داد.", "error")
+        print(f"Error clearing data: {e}")
     finally:
         conn.close()
     return redirect(url_for('reports'))
@@ -425,7 +498,8 @@ def clear_data():
 @login_required
 def add_employee():
     if not has_permission('management'):
-        return "Access Denied", 403
+        flash("شما به این بخش دسترسی ندارید.", "error")
+        return redirect(url_for('index'))
 
     employee_id = request.form['employeeId']
     name = request.form['name']
@@ -436,8 +510,9 @@ def add_employee():
                      (employee_id, name))
         conn.commit()
         log_action(session['user']['username'], 'افزودن کارمند', f'کارمند جدید: {name} ({employee_id})')
+        flash(f"کارمند '{name}' با موفقیت اضافه شد.", "success")
     except sqlite3.IntegrityError:
-        pass
+        flash(f"شماره پرسنلی '{employee_id}' قبلاً ثبت شده است.", "error")
     finally:
         conn.close()
         
@@ -448,7 +523,8 @@ def add_employee():
 @login_required
 def delete_employee():
     if not has_permission('management'):
-        return "Access Denied", 403
+        flash("شما به این بخش دسترسی ندارید.", "error")
+        return redirect(url_for('index'))
 
     employee_id = request.form['employeeId']
     
@@ -456,7 +532,11 @@ def delete_employee():
     try:
         conn.execute('DELETE FROM employees WHERE employee_id = ?', (employee_id,))
         conn.commit()
+        flash("کارمند با موفقیت حذف شد.", "success")
         log_action(session['user']['username'], 'حذف کارمند', f'کارمند با شناسه: {employee_id} حذف شد.')
+    except Exception as e:
+        flash("خطایی در حذف کارمند رخ داد.", "error")
+        print(f"Error deleting employee: {e}")
     finally:
         conn.close()
     return redirect(url_for('management'))
@@ -466,7 +546,8 @@ def delete_employee():
 @login_required
 def users():
     if not has_permission('users'):
-        return "Access Denied", 403
+        flash("شما به این بخش دسترسی ندارید.", "error")
+        return redirect(url_for('index'))
 
     conn = get_db_connection()
     try:
@@ -494,7 +575,6 @@ def get_permissions(username):
 @app.route('/get_user_logs/<username>')
 @login_required
 def get_user_logs(username):
-    # Only admins and the user themselves can view their logs
     if not has_permission('users') and session.get('user', {}).get('username') != username:
         return "Access Denied", 403
 
@@ -520,22 +600,27 @@ def get_user_logs(username):
 @login_required
 def add_user():
     if not has_permission('users'):
-        return "Access Denied", 403
+        flash("شما به این بخش دسترسی ندارید.", "error")
+        return redirect(url_for('users'))
         
     username = request.form['username'].lower()
+    name = request.form['name']
     password = request.form['password']
     role = request.form['role']
     permissions = json.dumps({'index': True, 'management': False, 'reports': False, 'users': False})
     if role == 'admin':
         permissions = json.dumps({'index': True, 'management': True, 'reports': True, 'users': True})
+        
+    hashed_password = generate_password_hash(password)
 
     conn = get_db_connection()
     try:
-        conn.execute("INSERT INTO users (username, password, role, permissions) VALUES (?, ?, ?, ?)", (username, password, role, permissions))
+        conn.execute("INSERT INTO users (username, name, password, role, permissions) VALUES (?, ?, ?, ?, ?)", (username, name, hashed_password, role, permissions))
         conn.commit()
-        log_action(session['user']['username'], 'افزودن کاربر جدید', f'کاربر: {username} با نقش {role}')
+        flash(f"کاربر '{name}' با موفقیت اضافه شد.", "success")
+        log_action(session['user']['username'], 'افزودن کاربر جدید', f'کاربر: {name} با نقش {role}')
     except sqlite3.IntegrityError:
-        pass
+        flash(f"نام کاربری '{username}' قبلاً ثبت شده است.", "error")
     finally:
         conn.close()
     return redirect(url_for('users'))
@@ -544,16 +629,20 @@ def add_user():
 @login_required
 def delete_user():
     if not has_permission('users'):
-        return "Access Denied", 403
+        flash("شما به این بخش دسترسی ندارید.", "error")
+        return redirect(url_for('users'))
         
     username = request.form['username']
     
     conn = get_db_connection()
     try:
         if username != 'admin':
-            conn.execute("DELETE FROM users WHERE username = ?", (username,))
+            conn.execute('DELETE FROM users WHERE username = ?', (username,))
             conn.commit()
+            flash(f"کاربر '{username}' با موفقیت حذف شد.", "success")
             log_action(session['user']['username'], 'حذف کاربر', f'کاربر: {username} حذف شد.')
+        else:
+            flash("کاربر 'admin' قابل حذف نیست.", "error")
     finally:
         conn.close()
     return redirect(url_for('users'))
@@ -562,18 +651,24 @@ def delete_user():
 @login_required
 def edit_user():
     if not has_permission('users'):
-        return "Access Denied", 403
+        flash("شما به این بخش دسترسی ندارید.", "error")
+        return redirect(url_for('users'))
         
     username = request.form['username']
+    name = request.form['name']
     password = request.form['password']
     role = request.form['role']
     
     conn = get_db_connection()
     try:
         if username != 'admin':
-            conn.execute("UPDATE users SET password = ?, role = ? WHERE username = ?", (password, role, username))
+            hashed_password = generate_password_hash(password)
+            conn.execute("UPDATE users SET name = ?, password = ?, role = ? WHERE username = ?", (name, hashed_password, role, username))
             conn.commit()
-            log_action(session['user']['username'], 'ویرایش کاربر', f'اطلاعات کاربر {username} ویرایش شد.')
+            flash(f"اطلاعات کاربر '{name}' با موفقیت ویرایش شد.", "success")
+            log_action(session['user']['username'], 'ویرایش کاربر', f'اطلاعات کاربر {name} ویرایش شد.')
+        else:
+            flash("کاربر 'admin' قابل ویرایش نیست.", "error")
     finally:
         conn.close()
     return redirect(url_for('users'))
@@ -582,14 +677,16 @@ def edit_user():
 @login_required
 def update_permissions():
     if not has_permission('users'):
-        return "Access Denied", 403
+        flash("شما به این بخش دسترسی ندارید.", "error")
+        return redirect(url_for('users'))
         
     username = request.form['username']
     permissions = {
         'index': 'index' in request.form,
         'management': 'management' in request.form,
         'reports': 'reports' in request.form,
-        'users': 'users' in request.form
+        'users': 'users' in request.form,
+        'petty_cash': 'petty_cash' in request.form # Add petty_cash permission
     }
 
     conn = get_db_connection()
@@ -597,11 +694,13 @@ def update_permissions():
         if username != 'admin':
             conn.execute("UPDATE users SET permissions = ? WHERE username = ?", (json.dumps(permissions), username))
             conn.commit()
+            flash(f"دسترسی‌های کاربر '{username}' با موفقیت به‌روزرسانی شد.", "success")
             log_action(session['user']['username'], 'به‌روزرسانی دسترسی‌ها', f'دسترسی‌های کاربر {username} به‌روزرسانی شد.')
+        else:
+            flash("دسترسی‌های کاربر 'admin' قابل ویرایش نیست.", "error")
     finally:
         conn.close()
     return redirect(url_for('users'))
-
 
 # روت برای جستجوی نام یا شماره پرسنلی
 @app.route('/lookup_employee', methods=['POST'])
@@ -801,11 +900,13 @@ def export_employees():
 @login_required
 def import_employees():
     if not has_permission('management'):
-        return "Access Denied", 403
+        flash("شما به این بخش دسترسی ندارید.", "error")
+        return redirect(url_for('management'))
 
     file = request.files['file']
     if not file or not file.filename.endswith('.csv'):
-        return "Invalid file format. Please upload a CSV file.", 400
+        flash("فرمت فایل نامعتبر است. لطفاً یک فایل CSV آپلود کنید.", "error")
+        return redirect(url_for('management'))
 
     conn = get_db_connection()
     conn.execute('BEGIN TRANSACTION')
@@ -823,14 +924,113 @@ def import_employees():
                     conn.execute('INSERT OR IGNORE INTO employees (employee_id, name) VALUES (?, ?)', (employee_id, name))
                     count += 1
         conn.commit()
+        flash(f"{count} کارمند جدید با موفقیت اضافه شد.", "success")
         log_action(session['user']['username'], 'ورودی از فایل CSV', f'{count} کارمند جدید اضافه شد.')
     except Exception as e:
         conn.rollback()
-        return f"An error occurred during import: {e}", 500
+        flash(f"هنگام وارد کردن اطلاعات خطایی رخ داد: {e}", "error")
     finally:
         conn.close()
 
     return redirect(url_for('management'))
+
+# NEW ROUTE: Petty cash page
+@app.route('/petty_cash')
+@login_required
+def petty_cash():
+    if not has_permission('petty_cash'):
+        flash("شما به این بخش دسترسی ندارید.", "error")
+        return redirect(url_for('index'))
+    
+    conn = get_db_connection()
+    try:
+        # Fetch data for petty cash report
+        records = conn.execute('''
+            SELECT * FROM petty_cash ORDER BY timestamp DESC
+        ''').fetchall()
+        
+        # Get list of all users for the payer dropdown
+        users = conn.execute("SELECT username, name, role FROM users ORDER BY name").fetchall()
+        
+    finally:
+        conn.close()
+    
+    return render_template('petty_cash.html', records=records, users=users)
+
+# NEW ROUTE: Add petty cash transaction
+@app.route('/add_petty_cash', methods=['POST'])
+@login_required
+def add_petty_cash():
+    if not has_permission('petty_cash'):
+        flash("شما به این بخش دسترسی ندارید.", "error")
+        return redirect(url_for('petty_cash'))
+
+    try:
+        date_fa = request.form['date_fa']
+        description = request.form['description']
+        unit = request.form['unit']
+        amount = request.form['amount']
+        unit_price = request.form['unit_price']
+        discount = request.form['discount']
+        total_amount = request.form['total_amount']
+        location = request.form['location']
+        notes = request.form['notes']
+        source = request.form['source']
+        invoice_number = request.form['invoice_number']
+        settlement_status = request.form['settlement_status']
+        payer = request.form['payer']
+        
+        # Handle the receipt image
+        receipt_image = request.files.get('receipt_image')
+        image_data = None
+        if receipt_image and receipt_image.filename != '':
+            image_data = receipt_image.read()
+
+        # Convert date from Persian to Gregorian and get timestamp
+        shamsi_dt = jdatetime.datetime.strptime(f'{date_fa}', '%Y/%m/%d')
+        miladi_dt = shamsi_dt.togregorian()
+        timestamp = miladi_dt.strftime('%Y-%m-%d %H:%M:%S')
+
+        conn = get_db_connection()
+        conn.execute('''
+            INSERT INTO petty_cash (date, description, unit, amount, unit_price, discount, total_amount, location, notes, source, invoice_number, settlement_status, payer, receipt_image, timestamp)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ''', (date_fa, description, unit, amount, unit_price, discount, total_amount, location, notes, source, invoice_number, settlement_status, payer, image_data, timestamp))
+        conn.commit()
+        
+        flash("ثبت تنخواه با موفقیت انجام شد.", "success")
+        log_action(session['user']['username'], 'ثبت تنخواه جدید', f'شرح: {description}, مبلغ کل: {total_amount}')
+    except Exception as e:
+        flash(f"خطا در ثبت تنخواه: {e}", "error")
+        print(f"Error adding petty cash: {e}")
+    finally:
+        conn.close()
+    
+    return redirect(url_for('petty_cash'))
+
+# API route to get distinct values for autocomplete
+@app.route('/autocomplete/petty_cash_field/<field_name>')
+@login_required
+def autocomplete_petty_cash_field(field_name):
+    conn = get_db_connection()
+    try:
+        if field_name in ['description', 'unit', 'location', 'source']:
+            distinct_values = conn.execute(f"SELECT DISTINCT {field_name} FROM petty_cash WHERE {field_name} IS NOT NULL AND {field_name} != ''").fetchall()
+            return jsonify([row[0] for row in distinct_values])
+    finally:
+        conn.close()
+    return jsonify([])
+
+# API route to get all users for the payer dropdown
+@app.route('/get_users_for_dropdown')
+@login_required
+def get_users_for_dropdown():
+    conn = get_db_connection()
+    try:
+        users = conn.execute("SELECT name FROM users ORDER BY name").fetchall()
+        return jsonify([user['name'] for user in users])
+    finally:
+        conn.close()
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', debug=True)
