@@ -1,0 +1,16 @@
+{
+    "name": "محوطه آرا",
+    "short_name": "محوطه آرا",
+    "description": "ثبت تردد کارکنان",
+    "start_url": "/login",
+    "display": "standalone",
+    "background_color": "#ffffff",
+    "theme_color": "#4f46e5",
+    "icons": [
+        {
+            "src": "/static/images/icons/icon.svg",
+            "sizes": "any",
+            "type": "image/svg+xml"
+        }
+    ]
+}

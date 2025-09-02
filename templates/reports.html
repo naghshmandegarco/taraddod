@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>گزارشات ورود و خروج</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/persian-datepicker@1.2.0/dist/css/persian-datepicker.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        table {
+            border-collapse: separate;
+            border-spacing: 0 10px; /* Space between rows */
+        }
+        /* Style for the inline edit form */
+        .edit-form-row {
+            background-color: #e2e8f0;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 p-4 sm:p-8 flex items-center justify-center min-h-screen">
+    <div class="container mx-auto max-w-4xl bg-white p-6 sm:p-10 rounded-xl shadow-2xl border border-gray-200">
+        <header class="text-center mb-6">
+            <h1 class="text-2xl sm:text-3xl font-bold text-gray-800 mb-1">گزارشات ورود و خروج</h1>
+            <p class="text-gray-500 text-sm">گزارش کامل تمام ورود و خروج‌های ثبت‌شده.</p>
+        </header>
+
+        <nav class="flex flex-col sm:flex-row justify-center space-x-0 sm:space-x-4 space-x-reverse mb-6">
+            <a href="/" class="bg-gray-200 text-gray-800 text-sm font-semibold py-2 px-3 rounded-lg shadow-md hover:bg-gray-300 transition duration-300 my-1 sm:my-0">صفحه اصلی</a>
+            <a href="/management" class="bg-gray-200 text-gray-800 text-sm font-semibold py-2 px-3 rounded-lg shadow-md hover:bg-gray-300 transition duration-300 my-1 sm:my-0">مدیریت کارکنان</a>
+            <a href="/reports" class="bg-indigo-600 text-white text-sm font-semibold py-2 px-3 rounded-lg shadow-md hover:bg-indigo-700 transition duration-300 my-1 sm:my-0">گزارشات</a>
+            <a href="/users" class="bg-gray-200 text-gray-800 text-sm font-semibold py-2 px-3 rounded-lg shadow-md hover:bg-gray-300 transition duration-300 my-1 sm:my-0">کاربران</a>
+            <a href="/logout" class="bg-red-500 text-white text-sm font-semibold py-2 px-3 rounded-lg shadow-md hover:bg-red-600 transition duration-300 my-1 sm:my-0">خروج</a>
+        </nav>
+        <!-- Current User Display -->
+        {% if session.get('user') %}
+        <p class="text-center text-sm font-medium text-gray-600 mb-6">کاربر جاری: <span class="font-bold text-indigo-600">{{ session['user']['username'] }}</span></p>
+        {% endif %}
+
+        <section>
+            <div class="flex flex-col sm:flex-row justify-between items-center mb-3 space-y-2 sm:space-y-0">
+                <h2 class="text-xl font-bold text-gray-800">گزارش کامل</h2>
+                <div class="flex space-x-3 space-x-reverse flex-wrap justify-end">
+                    <a href="/export/all" class="bg-blue-600 text-white font-semibold py-2 px-3 rounded-lg shadow-md hover:bg-blue-700 transition duration-300 flex items-center space-x-2 space-x-reverse text-sm my-1 sm:my-0">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                            <path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM6.293 6.707a1 1 0 010-1.414L9 3.586V13a1 1 0 112 0V3.586l2.707 2.707a1 1 0 11-1.414 1.414L10 5.414l-2.293 2.293a1 1 0 01-1.414 0z" clip-rule="evenodd" />
+                        </svg>
+                        <span>خروجی گرفتن از کل داده‌ها</span>
+                    </a>
+                    <a href="/export/zip" class="bg-purple-600 text-white font-semibold py-2 px-3 rounded-lg shadow-md hover:bg-purple-700 transition duration-300 flex items-center space-x-2 space-x-reverse text-sm my-1 sm:my-0">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                            <path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 11.586V3a1 1 0 112 0v8.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd" />
+                        </svg>
+                        <span>خروجی ZIP از همه گزارشات</span>
+                    </a>
+                </div>
+            </div>
+
+            <div class="bg-gray-50 p-4 rounded-lg shadow-inner mb-6">
+                <form action="/reports" method="get" class="space-y-3">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 items-end">
+                        <div>
+                            <label for="start_date_filter" class="block text-sm font-medium text-gray-700 mb-1">تاریخ شروع:</label>
+                            <input type="text" id="start_date_filter" name="start_date" value="{{ start_date if start_date else '' }}" placeholder="1404/01/01" class="date-input w-full p-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition duration-300 text-sm" data-jdp>
+                        </div>
+                        <div>
+                            <label for="end_date_filter" class="block text-sm font-medium text-gray-700 mb-1">تاریخ پایان:</label>
+                            <input type="text" id="end_date_filter" name="end_date" value="{{ end_date if end_date else '' }}" placeholder="1404/12/29" class="date-input w-full p-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition duration-300 text-sm" data-jdp>
+                        </div>
+                    </div>
+                    <button type="submit" class="w-full bg-indigo-600 text-white font-semibold py-2 rounded-lg shadow-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition duration-300 text-sm">
+                        اعمال فیلتر
+                    </button>
+                </form>
+            </div>
+
+            <div class="bg-white rounded-xl overflow-hidden shadow-2xl border border-gray-200">
+                <div class="p-4 bg-white">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">جستجو در گزارشات:</label>
+                    <input type="text" id="report-search" placeholder="جستجو بر اساس شماره پرسنلی یا نام کارمند" class="w-full p-2 rounded-md border border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition duration-300 text-sm">
+                </div>
+                <div class="max-h-72 overflow-y-auto">
+                    <table class="min-w-full">
+                        <thead class="bg-gray-50 sticky top-0">
+                            <tr>
+                                <th class="px-6 py-3 text-right text-sm font-medium text-gray-500 uppercase tracking-wider">شماره پرسنلی</th>
+                                <th class="px-6 py-3 text-right text-sm font-medium text-gray-500 uppercase tracking-wider">نام کارمند</th>
+                                <th class="px-6 py-3 text-right text-sm font-medium text-gray-500 uppercase tracking-wider">عملیات</th>
+                                <th class="px-6 py-3 text-right text-sm font-medium text-gray-500 uppercase tracking-wider">زمان</th>
+                                <th class="px-6 py-3 text-right text-sm font-medium text-gray-500 uppercase tracking-wider">عملیات</th>
+                            </tr>
+                        </thead>
+                        <tbody id="logTableBody" class="bg-white divide-y divide-gray-200">
+                            {% for record in records %}
+                            <tr class="report-item" data-id="{{ record.id }}">
+                                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{{ record.employee_id }}</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{{ record.name }}</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm font-semibold {% if record.action == 'ورود' %}text-green-600{% else %}text-red-600{% endif %}">{{ record.action }}</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ record.timestamp_fa }}</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                    <button onclick="showEditForm(this)" class="text-indigo-600 hover:text-indigo-900 transition duration-300">
+                                        ویرایش
+                                    </button>
+                                    <form action="/delete_log/{{ record.id }}" method="post" class="inline-block" onsubmit="return confirm('آیا مطمئن هستید که می‌خواهید این رکورد را حذف کنید؟');">
+                                        <input type="hidden" name="id" value="{{ record.id }}">
+                                        <button type="submit" class="text-red-600 hover:text-red-900 transition duration-300 mr-2">
+                                            حذف
+                                        </button>
+                                    </form>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <div class="mt-6 flex justify-end">
+            <form action="/clear_data" method="post" onsubmit="return confirm('آیا مطمئن هستید که می‌خواهید تمام اطلاعات را پاک کنید؟ این عملیات غیرقابل بازگشت است.');">
+                <button type="submit" class="bg-red-500 text-white font-semibold py-2 px-4 rounded-lg shadow-md hover:bg-red-600 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 transition duration-300 text-sm">
+                    پاک کردن تمام داده‌ها
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/persian-date@1.1.0/dist/persian-date.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/persian-datepicker@1.2.0/dist/js/persian-datepicker.min.js"></script>
+    <script>
+        function showEditForm(button) {
+            const row = button.closest('tr');
+            const id = row.dataset.id;
+            const employeeId = row.children[0].textContent;
+            const name = row.children[1].textContent;
+            const action = row.children[2].textContent;
+            const timestampFa = row.children[3].textContent;
+
+            const [dateFa, timeFa] = timestampFa.split(' ');
+
+            const editRow = document.createElement('tr');
+            editRow.classList.add('edit-form-row');
+            editRow.innerHTML = `
+                <td colspan="5" class="px-6 py-4">
+                    <form action="/edit_log/${id}" method="post" class="space-y-3">
+                        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                            <div>
+                                <label for="edit_employeeId" class="block text-sm font-medium text-gray-700">شماره پرسنلی:</label>
+                                <input type="text" id="edit_employeeId" name="employeeId" value="${employeeId}" required class="w-full p-2 border-gray-300 rounded-md text-sm">
+                            </div>
+                            <div>
+                                <label for="edit_action" class="block text-sm font-medium text-gray-700">عملیات:</label>
+                                <select id="edit_action" name="action" class="w-full p-2 border-gray-300 rounded-md text-sm">
+                                    <option value="ورود" ${action === 'ورود' ? 'selected' : ''}>ورود</option>
+                                    <option value="خروج" ${action === 'خروج' ? 'selected' : ''}>خروج</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label for="edit_date" class="block text-sm font-medium text-gray-700">تاریخ:</label>
+                                <input type="text" id="edit_date" name="date" value="${dateFa}" required class="w-full p-2 border-gray-300 rounded-md text-sm">
+                            </div>
+                             <div>
+                                <label for="edit_time" class="block text-sm font-medium text-gray-700">ساعت:</label>
+                                <input type="text" id="edit_time" name="time" value="${timeFa}" required class="w-full p-2 border-gray-300 rounded-md text-sm">
+                            </div>
+                        </div>
+                        <div class="flex justify-end space-x-3 space-x-reverse mt-3">
+                            <button type="submit" class="bg-green-600 text-white font-semibold py-2 px-4 rounded-lg text-sm">ذخیره</button>
+                            <button type="button" onclick="cancelEdit(this)" class="bg-gray-400 text-white font-semibold py-2 px-4 rounded-lg text-sm">انصراف</button>
+                        </div>
+                        <input type="hidden" name="timestamp_miladi" value="${row.children[3].dataset.miladi}">
+                    </form>
+                </td>
+            `;
+
+            row.after(editRow);
+            row.style.display = 'none';
+        }
+
+        function cancelEdit(button) {
+            const editRow = button.closest('tr');
+            const originalRow = editRow.previousElementSibling;
+
+            originalRow.style.display = 'table-row';
+            editRow.remove();
+        }
+
+        $(document).ready(function() {
+            const allReportItems = document.querySelectorAll('.report-item');
+
+            $("#report-search").on("keyup", function() {
+                const searchTerm = $(this).val().toLowerCase();
+                allReportItems.forEach(row => {
+                    const rowText = row.textContent.toLowerCase();
+                    if (rowText.includes(searchTerm)) {
+                        row.style.display = '';
+                    } else {
+                        row.style.display = 'none';
+                    }
+                });
+            });
+            // Initialize Persian Datepicker for the filter inputs
+            $("#start_date_filter, #end_date_filter").pDatepicker({
+                initialValue: false,
+                format: 'YYYY/MM/DD',
+                autoClose: true
+            });
+        });
+    </script>
+</body>
+</html>
