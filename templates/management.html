@@ -17,9 +17,6 @@
             border-collapse: separate;
             border-spacing: 0 10px; /* Space between rows */
         }
-        .edit-form-row {
-            background-color: #e2e8f0;
-        }
     </style>
 </head>
 <body class="bg-gray-100 p-4 sm:p-8 flex items-center justify-center min-h-screen">
@@ -33,7 +30,7 @@
         <!-- Navigation Buttons -->
         <nav class="flex flex-col sm:flex-row justify-center space-x-0 sm:space-x-4 space-x-reverse mb-6 flex-wrap">
             {% if session.get('user') and session['user']['permissions']['index'] %}
-            <a href="/" class="bg-gray-200 text-gray-800 text-sm font-semibold py-2 px-3 rounded-lg shadow-md hover:bg-gray-300 transition duration-300 my-1 sm:my-0">صفحه اصلی</a>
+            <a href="/" class="bg-gray-200 text-gray-800 text-sm font-semibold py-2 px-3 rounded-lg shadow-md hover:bg-gray-300 transition duration-300 my-1 sm:my-0">ثبت تردد</a>
             {% endif %}
             {% if session.get('user') and session['user']['permissions']['management'] %}
             <a href="/management" class="bg-indigo-600 text-white text-sm font-semibold py-2 px-3 rounded-lg shadow-md hover:bg-indigo-700 transition duration-300 my-1 sm:my-0">مدیریت کارکنان</a>
